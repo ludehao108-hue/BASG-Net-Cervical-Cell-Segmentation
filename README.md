@@ -18,7 +18,7 @@ The auxiliary branch should be interpreted as a background-aware feature modulat
 
 ## Architecture Overview
 
-![BASG-Net architecture overview](assets/basgnet_overview.png)
+![BASG-Net architecture overview](basgnet_overview.png)
 
 **Figure 1.** Overview of BASG-Net. The model contains a U-Net-style encoder-decoder backbone, an auxiliary background-aware branch attached to the H/4 encoder feature map, and spatial keep gates applied to multi-level skip connections.
 
