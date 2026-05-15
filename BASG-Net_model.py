@@ -1,11 +1,9 @@
 """
-Public model-only implementation of the cervical cell segmentation network.
+Public model-only implementation of BASG-Net.
 
-This file keeps the network architecture aligned with the original research
-code while removing dataset loading, training, evaluation, visualization,
-local paths, logs, checkpoints, and private experimental details.
-
-Only the model definition is released.
+This file releases only the model architecture for cervical cell segmentation.
+It removes dataset loading, training, evaluation, visualization, local paths,
+logs, checkpoints, and private experimental details.
 """
 
 from __future__ import annotations
@@ -15,11 +13,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-def conv3x3(in_c, out_c, stride=1, dilation=1):
-    """
-    Historical name kept for compatibility with the original code.
-    In this model version, this function returns a 5 x 5 convolution.
-    """
+def conv5x5(in_c, out_c, stride=1, dilation=1):
+    """5 x 5 convolution with padding that preserves spatial resolution."""
     k = 5
     padding = (k // 2) * dilation
     return nn.Conv2d(
@@ -34,19 +29,20 @@ def conv3x3(in_c, out_c, stride=1, dilation=1):
 
 
 def conv1x1(in_c, out_c, stride=1):
+    """1 x 1 convolution."""
     return nn.Conv2d(in_c, out_c, kernel_size=1, stride=stride, bias=False)
 
 
 class DoubleConv(nn.Module):
-    """Conv(5x5) + BN + ReLU repeated twice."""
+    """Conv(5 x 5) + BN + ReLU repeated twice."""
 
     def __init__(self, in_c, out_c):
         super().__init__()
         self.block = nn.Sequential(
-            conv3x3(in_c, out_c),
+            conv5x5(in_c, out_c),
             nn.BatchNorm2d(out_c),
             nn.ReLU(inplace=True),
-            conv3x3(out_c, out_c),
+            conv5x5(out_c, out_c),
             nn.BatchNorm2d(out_c),
             nn.ReLU(inplace=True),
         )
@@ -82,6 +78,7 @@ class Up(nn.Module):
 
         diff_y = x_skip.size(2) - x_up.size(2)
         diff_x = x_skip.size(3) - x_up.size(3)
+
         x_up = F.pad(
             x_up,
             [
@@ -97,17 +94,15 @@ class Up(nn.Module):
         return x
 
 
-class UNet(nn.Module):
+class BASGNet(nn.Module):
     """
-    U-Net-style segmentation model with an auxiliary background/artifact branch
-    and spatial gating of skip connections.
-
-    The class and module names are intentionally kept close to the original
-    implementation, so state_dict keys remain aligned with the research code.
+    BASG-Net: a U-Net-style segmentation network with an auxiliary
+    background/artifact branch and spatial gating of skip connections.
     """
 
     def __init__(self, in_channels=3, num_classes=1, base_c=64):
         super().__init__()
+
         c1 = base_c
         c2 = base_c * 2
         c3 = base_c * 4
@@ -127,19 +122,18 @@ class UNet(nn.Module):
         self.up3 = Up(c3, c2)
         self.up4 = Up(c2, c1)
 
-        # Kept for architectural compatibility with the original code.
+        # Kept as an identity layer for compatibility with the original design.
         self.cam_layer = nn.Identity()
 
         # Segmentation head: 5 x 5 convolution followed by 1 x 1 projection.
         self.head = nn.Sequential(
-            conv3x3(c1, c1),
+            conv5x5(c1, c1),
             nn.BatchNorm2d(c1),
             nn.ReLU(inplace=True),
             conv1x1(c1, num_classes),
         )
 
-        # Auxiliary branch from x3 (H/4, W/4).
-        # It predicts a coarse background/artifact probability map during use.
+        # Auxiliary branch attached to the H/4 encoder feature map.
         self.artifact_head = nn.Sequential(
             nn.Conv2d(c3, c3 // 2, kernel_size=5, padding=2, bias=False),
             nn.BatchNorm2d(c3 // 2),
@@ -148,12 +142,22 @@ class UNet(nn.Module):
         )
 
     def _gate_skip(self, skip: torch.Tensor, gate_keep: torch.Tensor) -> torch.Tensor:
+        """
+        Apply spatial keep gate to skip-connection features.
+
+        skip: [B, C, H, W]
+        gate_keep: [B, 1, h, w]
+        """
         if gate_keep.shape[2:] != skip.shape[2:]:
             gate = F.interpolate(
-                gate_keep, size=skip.shape[2:], mode="bilinear", align_corners=False
+                gate_keep,
+                size=skip.shape[2:],
+                mode="bilinear",
+                align_corners=False,
             )
         else:
             gate = gate_keep
+
         return skip * gate
 
     def forward(self, x):
@@ -164,7 +168,7 @@ class UNet(nn.Module):
         x4 = self.down3(x3)
         x5 = self.down4(x4)
 
-        # Auxiliary branch and complementary keep gate.
+        # Auxiliary background/artifact branch.
         artifact_logits = self.artifact_head(x3)
         artifact_prob = torch.sigmoid(artifact_logits)
         gate_keep = 1.0 - artifact_prob
@@ -175,7 +179,7 @@ class UNet(nn.Module):
         x2_g = self._gate_skip(x2, gate_keep)
         x1_g = self._gate_skip(x1, gate_keep)
 
-        # Decoder.
+        # Decoder
         x = self.up1(x5, x4_g)
         x = self.up2(x, x3_g)
         x = self.up3(x, x2_g)
@@ -187,19 +191,30 @@ class UNet(nn.Module):
         return seg_logits, artifact_logits
 
 
-class BASGNet(UNet):
-    """Public-facing alias for the same architecture."""
+class UNet(BASGNet):
+    """
+    Backward-compatible alias.
+
+    The released model is BASG-Net, but this alias is kept in case users
+    expect the original class name.
+    """
 
     pass
 
 
 def build_basg_net(in_channels=3, num_classes=1, base_c=64):
-    return BASGNet(in_channels=in_channels, num_classes=num_classes, base_c=base_c)
+    return BASGNet(
+        in_channels=in_channels,
+        num_classes=num_classes,
+        base_c=base_c,
+    )
 
 
 if __name__ == "__main__":
     model = BASGNet(in_channels=3, num_classes=1, base_c=64)
     x = torch.randn(2, 3, 224, 224)
+
     seg_logits, artifact_logits = model(x)
+
     print("seg_logits:", tuple(seg_logits.shape))
     print("artifact_logits:", tuple(artifact_logits.shape))
