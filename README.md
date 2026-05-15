@@ -1,28 +1,26 @@
-# BASG-Net: Background-Aware Spatial Gating Network for Cervical Cell Segmentation
+# BASG-Net: Model Architecture Only
 
-This repository provides the **model architecture implementation** of BASG-Net, a background-aware spatial gating network designed for cervical cell segmentation in Pap smear images.
+This repository provides the **model architecture implementation** of BASG-Net, a background-aware spatial gating network for cervical cell segmentation in Pap smear images.
 
 > **Note:** This repository releases the model architecture only. It does **not** include datasets, local paths, training scripts, evaluation scripts, logs, checkpoints, prediction masks, Grad-CAM visualizations, or experimental results.
 
 ---
 
-## Introduction
+## Model Overview
 
-<!-- INTRO_START -->
-Accurate cervical cell segmentation is an important step for automated cytology image analysis. However, Pap smear images often contain complex non-cellular background interference, including red blood cells, staining residues, mucus, cell debris, and uneven background regions. These factors may introduce false-positive responses and affect the continuity of predicted cell boundaries.
+BASG-Net follows a U-Net-style encoder-decoder architecture for binary cervical cell segmentation. The backbone uses 5 × 5 convolutional blocks throughout the main encoder-decoder pathway.
 
-BASG-Net is designed to improve feature propagation in an encoder-decoder segmentation framework by introducing a background-aware auxiliary branch. Instead of acting as an independent detector for specific artifact categories, this branch estimates a coarse background/non-cell probability map from intermediate encoder features. The complementary spatial response is then used as a keep gate to modulate multi-level skip connections, allowing foreground-related features to be retained while reducing the influence of background responses during feature fusion.
-<!-- INTRO_END -->
+To reduce background interference during feature fusion, the model introduces an auxiliary branch attached to the H/4 encoder feature map. This branch estimates a coarse background/non-cell probability map. The complementary response is then used as a spatial keep gate to modulate multi-level skip-connection features before decoder fusion.
+
+The auxiliary branch should be interpreted as a background-aware feature modulation component, **not** as an independent detector for specific artifact categories such as red blood cells, mucus, staining residues, or cell debris.
 
 ---
 
 ## Architecture Overview
 
-<!-- FIGURE_START -->
 ![BASG-Net architecture overview](assets/basgnet_overview.png)
-<!-- FIGURE_END -->
 
-**Figure 1.** Overview of BASG-Net. The model follows a U-Net-style encoder-decoder structure. An auxiliary background-aware branch is attached to the H/4 encoder feature map and generates a background probability map. Its complementary response is used as a spatial keep gate to modulate skip-connection features before decoder fusion.
+**Figure 1.** Overview of BASG-Net. The model contains a U-Net-style encoder-decoder backbone, an auxiliary background-aware branch attached to the H/4 encoder feature map, and spatial keep gates applied to multi-level skip connections.
 
 ---
 
@@ -35,8 +33,6 @@ The released model keeps the architecture aligned with the original implementati
 - auxiliary branch attached to the H/4 encoder feature map
 - complementary spatial keep gate for multi-level skip connections
 - segmentation head with 5 × 5 convolution plus 1 × 1 projection
-
-The auxiliary branch should be interpreted as a coarse background/non-cell probability estimation branch used for skip-connection modulation, **not** as an independent detector for red blood cells, staining residues, mucus, or other specific artifact categories.
 
 ---
 
