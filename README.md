@@ -71,10 +71,10 @@ from basg_net import BASGNet
 model = BASGNet(in_channels=3, num_classes=1, base_c=64)
 
 x = torch.randn(2, 3, 224, 224)
-seg_logits, artifact_logits = model(x)
+seg_logits, background_logits = model(x)
 
-print(seg_logits.shape)      # [2, 1, 224, 224]
-print(artifact_logits.shape) # [2, 1, 56, 56]
+print(seg_logits.shape)        # [2, 1, 224, 224]
+print(background_logits.shape) # [2, 1, 56, 56]
 ```
 
 ---
@@ -84,14 +84,13 @@ print(artifact_logits.shape) # [2, 1, 56, 56]
 The model returns two tensors:
 
 ```python
-seg_logits, artifact_logits = model(x)
+seg_logits, background_logits = model(x)
 ```
 
 - `seg_logits`: segmentation logits with the same spatial size as the input image
-- `artifact_logits`: auxiliary background/non-cell logits generated from the H/4 encoder feature map
+- `background_logits`: auxiliary background/non-cell logits generated from the H/4 encoder feature map
 
 The final segmentation mask can be obtained by applying a sigmoid function and a threshold to `seg_logits`.
-
 ---
 
 ## Requirements
