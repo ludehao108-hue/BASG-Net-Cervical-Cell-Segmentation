@@ -97,7 +97,7 @@ class Up(nn.Module):
 class BASGNet(nn.Module):
     """
     BASG-Net: a U-Net-style segmentation network with an auxiliary
-    background/artifact branch and spatial gating of skip connections.
+    background-aware branch and spatial gating of skip connections.
     """
 
     def __init__(self, in_channels=3, num_classes=1, base_c=64):
@@ -133,8 +133,8 @@ class BASGNet(nn.Module):
             conv1x1(c1, num_classes),
         )
 
-        # Auxiliary branch attached to the H/4 encoder feature map.
-        self.artifact_head = nn.Sequential(
+        # Background-aware auxiliary branch attached to the H/4 encoder feature map.
+        self.background_head = nn.Sequential(
             nn.Conv2d(c3, c3 // 2, kernel_size=5, padding=2, bias=False),
             nn.BatchNorm2d(c3 // 2),
             nn.ReLU(inplace=True),
@@ -168,10 +168,12 @@ class BASGNet(nn.Module):
         x4 = self.down3(x3)
         x5 = self.down4(x4)
 
-        # Auxiliary background/artifact branch.
-        artifact_logits = self.artifact_head(x3)
-        artifact_prob = torch.sigmoid(artifact_logits)
-        gate_keep = 1.0 - artifact_prob
+        # Auxiliary background branch.
+        background_logits = self.background_head(x3)
+        background_prob = torch.sigmoid(background_logits)
+
+        # Complementary keep gate for foreground-related feature propagation.
+        gate_keep = 1.0 - background_prob
 
         # Gated skip connections.
         x4_g = self._gate_skip(x4, gate_keep)
@@ -188,7 +190,7 @@ class BASGNet(nn.Module):
         x_cam = self.cam_layer(x)
         seg_logits = self.head(x_cam)
 
-        return seg_logits, artifact_logits
+        return seg_logits, background_logits
 
 
 class UNet(BASGNet):
@@ -196,7 +198,7 @@ class UNet(BASGNet):
     Backward-compatible alias.
 
     The released model is BASG-Net, but this alias is kept in case users
-    expect the original class name.
+    expect the original U-Net-style class name.
     """
 
     pass
@@ -214,7 +216,7 @@ if __name__ == "__main__":
     model = BASGNet(in_channels=3, num_classes=1, base_c=64)
     x = torch.randn(2, 3, 224, 224)
 
-    seg_logits, artifact_logits = model(x)
+    seg_logits, background_logits = model(x)
 
     print("seg_logits:", tuple(seg_logits.shape))
-    print("artifact_logits:", tuple(artifact_logits.shape))
+    print("background_logits:", tuple(background_logits.shape))
