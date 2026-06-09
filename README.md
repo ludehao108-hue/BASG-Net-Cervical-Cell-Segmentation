@@ -15,6 +15,10 @@ To reduce background interference during feature fusion, the model introduces an
 The auxiliary branch should be interpreted as a background-aware feature modulation component, **not** as an independent detector for specific artifact categories such as red blood cells, mucus, staining residues, or cell debris.
 
 ---
+## Code Availability
+
+The model-only implementation of **BASG-Net** was publicly released on **16 May 2026**, following the initial manuscript submission on **02 Apr 2026**. This repository is intended to provide a transparent description of the proposed network architecture. Dataset files, local paths, checkpoints, logs, and private experimental outputs are not included.
+
 
 ## Architecture Overview
 
