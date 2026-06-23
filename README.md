@@ -65,6 +65,20 @@ Grad-CAM results
 ```
 
 ---
+## Trained Weights
+
+The trained weights of BASG-Net and the comparison models are available in the GitHub Releases section.
+
+Because of file-size limitations, the weights are split by dataset into multiple compressed files:
+
+- `apacs23_trained_weights_01.zip`
+- `apacs23_trained_weights_02.zip`
+- `cx22_trained_weights_01.zip`
+- `cx22_trained_weights_02.zip`
+
+Please download all files for the corresponding dataset and extract them locally before use.
+
+The released weights include BASG-Net and representative comparison models trained under the experimental settings described in the manuscript. Datasets, training logs, local experimental files, and raw evaluation outputs are not included.
 
 ## Usage
 
